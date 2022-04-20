@@ -1,0 +1,267 @@
+#Phase 3: Process
+
+##loading packages
+install.packages("rmarkdown")
+library(rmarkdown)
+install.packages("tidyverse")
+library("tidyverse")
+install.packages("lubridate")
+library("lubridate")
+
+##loading csv files
+
+daily_activity <- read_csv('Daily_Activity.csv')
+daily_sleep <- read_csv('Daily_Sleep.csv')
+weight_log <- read_csv('Weight_Log.csv')
+
+##preview tables
+
+head(daily_activity)
+head(daily_sleep)
+head(weight_log)
+
+##duplicated data
+
+nrow(daily_activity[duplicated(daily_activity),])
+####deleting the 3 duplicates found on the daily_sleep table
+daily_sleep <- unique(daily_sleep)
+nrow(daily_sleep[duplicated(daily_sleep),])
+nrow(weight_log[duplicated(weight_log),])
+
+##irrelavant data
+
+####separating date and time from the daily_sleep and weight_log tables
+daily_sleep <- daily_sleep %>%
+  separate(SleepDay, c("Date", "Time"), " ")
+weight_log <- weight_log %>%
+  separate(Date, c("Date", "Time"), " ")
+
+
+####changing date format, ordering the tables by dates and cecking first and last row of the tables
+daily_activity <- rename(daily_activity, Date = ActivityDate)
+daily_activity$Date <- mdy(daily_activity$Date)
+daily_activity <- daily_activity[order(daily_activity$Date),]
+head(daily_activity, n=1)
+tail(daily_activity, n=1)
+
+daily_sleep$Date <- mdy(daily_sleep$Date)
+daily_sleep <- daily_sleep[order(daily_sleep$Date),]
+head(daily_sleep, n=1)
+tail(daily_sleep, n=1)
+
+weight_log$Date <- mdy(weight_log$Date)
+weight_log <- weight_log[order(weight_log$Date),]
+head(weight_log, n=1)
+tail(weight_log, n=1)
+
+##Inconsistencies in the number of rows
+
+nrow(daily_activity)
+nrow(daily_sleep)
+nrow(weight_log)
+
+##Inconsistencies in the number of participants
+
+n_distinct(daily_activity$Id)
+n_distinct(daily_sleep$Id)
+n_distinct(weight_log$Id)
+
+##NULL/NA values
+
+###NULL
+is.null(daily_activity)
+is.null(daily_sleep)
+is.null(weight_log)
+
+###NA
+sum(is.na(daily_activity))
+sum(is.na(daily_sleep))
+sum(is.na(weight_log))
+#displaying the NA values in the weight_log table
+is.na(weight_log)
+
+###removing the 'Fat' column
+weight_log <- subset(weight_log, select = -Fat)
+
+##Unrealistic data
+
+daily_activity <- daily_activity %>% 
+  filter(TotalSteps !=0)
+daily_activity <- daily_activity %>%  
+  filter(TotalDistance !=0)
+daily_activity <- daily_activity %>%  
+  filter(VeryActiveMinutes !=0)
+daily_activity <- daily_activity %>%  
+  filter(LightlyActiveMinutes !=0)
+daily_activity <- daily_activity %>%  
+  filter(SedentaryMinutes !=0)
+
+#Phase 5: Analyse                     
+##summary variables
+
+###daily_activity table
+daily_activity %>% 
+  select(TotalSteps,
+         TotalDistance,
+         VeryActiveMinutes,
+         FairlyActiveMinutes,
+         LightlyActiveMinutes,
+         SedentaryMinutes,
+         Calories) %>% 
+  summary()
+
+###daily_sleep table
+daily_sleep %>%
+  select (TotalSleepRecords,
+          TotalMinutesAsleep,
+          TotalTimeInBed) %>%
+  summary()
+
+###weight_log table
+weight_log %>%
+  select (WeightKg,
+          BMI) %>%
+  summary()
+
+####Overweight participants
+overweight <- weight_log%>% 
+  filter(BMI > 24.9)
+distinct(overweight, Id)
+
+##Correlations
+
+###TotalSteps vs. Calories
+cor.test(daily_activity$TotalSteps, daily_activity$Calories,  method="spearman")
+
+
+###Type of actives minutes vs Calories 
+####Very Active
+cor.test(daily_activity$Calories, daily_activity$VeryActiveMinutes, method="spearman")
+####Fairly Active
+cor.test(daily_activity$Calories, daily_activity$FairlyActiveMinutes, method="spearman")
+####LightlyActive
+cor.test(daily_activity$Calories, daily_activity$LightlyActiveMinutes, method="spearman")
+####Sedentary
+cor.test(daily_activity$Calories, daily_activity$SedentaryMinutes, method="spearman")
+
+###Time to fall asleep
+daily_sleep$no_sleep <- daily_sleep$TotalTimeInBed - daily_sleep$TotalMinutesAsleep
+head(daily_sleep$no_sleep)
+mean(daily_sleep$no_sleep)
+
+###Time to fall asleep vs Calories
+####organized the daily_activity table by date
+daily_activity <- arrange(daily_activity, Date)
+####Only taking the first 410th rows
+calories_410 <- daily_activity$Calories[1:410]
+
+cor.test(NoSleep_calories$calories, daily_sleep$no_sleep, method="spearman")
+
+###Time to fall asleep vs Type of active minutes
+####Only taking the first 410th rows
+very_active <- daily_activity$VeryActiveMinutes[1:410]
+fairly_active <- daily_activity$FairlyActiveMinutes[1:410]
+lightly_active <- daily_activity$LightlyActiveMinutes[1:410]
+sedentary <- daily_activity$SedentaryMinutes[1:410]
+####Very Active
+cor.test(very_active, daily_sleep$no_sleep, method="spearman")
+####Fairly Active
+cor.test(fairly_active, daily_sleep$no_sleep, method="spearman")
+####LightlyActive
+cor.test(lightly_active, daily_sleep$no_sleep, method="spearman")
+####Sedentary
+cor.test(sedentary, daily_sleep$no_sleep, method="spearman")
+
+###Weight vs Calories Burned
+####only taking the info on the people who input their weight
+weight_8 <- distinct(weight_log, Id)
+tibble(weight_8)
+
+daily_activity_8 <- filter(daily_activity,
+                           Id == 6962181067 | 
+                             Id == 8877689391 | 
+                             Id ==1927972279 | 
+                             Id == 4319703577| 
+                             Id == 5577150313| 
+                             Id == 4558609924| 
+                             Id == 2873212765| 
+                             Id == 1503960366)
+
+
+####organized the daily_activity_8 table by date
+daily_activity_8 <- arrange(daily_activity_8, Date) 
+####Only taking the first 410th rows
+calories_67 <- daily_activity_8$Calories[1:67]
+
+cor.test(calories_67, weight_log$WeightKg, method="spearman")
+
+###BMI vs Calories Burned
+cor.test(calories_67, weight_log$BMI, method="spearman")
+
+###BMI vs Type of actives minutes
+very_active_67 <- daily_activity_8$VeryActiveMinutes[1:67]
+fairly_active_67 <- daily_activity_8$FairlyActiveMinutes[1:67]
+lightly_active_67 <- daily_activity_8$LightlyActiveMinutes[1:67]
+sedentary_67 <- daily_activity_8$SedentaryMinutes[1:67]
+
+####Very Active
+cor.test(very_active_67, weight_log$BMI, method="spearman")
+####Fairly Active
+cor.test(fairly_active_67, weight_log$BMI, method="spearman")
+####LightlyActive
+cor.test(lightly_active_67, weight_log$BMI, method="spearman")
+####Sedentary
+cor.test(sedentary_67, weight_log$BMI, method="spearman")
+
+#Phase 6: Share
+
+##Summary variables
+###daily_activity table
+####creating average of each columns
+avg_very_active <- mean(daily_activity$VeryActiveMinutes)
+avg_fairly_active <- mean(daily_activity$FairlyActiveMinutes)
+avg_lightly_active <- mean(daily_activity$LightlyActiveMinutes)
+avg_sedentary <- mean(daily_activity$SedentaryMinutes)
+####grouping them into a new data frame
+avg_daily_activity <- data_frame(name= c("Very Active","Fairly Active","Lightly Active","Sedentary") ,
+                                 value= c(37.48, 23.14, 215.42, 931.89))
+                              
+ggplot(avg_daily_activity, aes(x=name, y=value)) + 
+  geom_bar(stat="identity", fill="pink")+ 
+  geom_text(aes(label=round(value, digits=0)), vjust=1.6, color="white", size=5.5) + 
+  labs(title="Average Time spend doing each Type of Activity Daily", x="Type of Activity", y="Time (min)") 
+ 
+###daily_sleep table
+ggplot(daily_sleep) +
+  geom_point(mapping=aes(x= TotalTimeInBed, y= TotalMinutesAsleep)) +
+  geom_smooth(mapping=aes(x= TotalTimeInBed, y= TotalMinutesAsleep)) +
+  labs(title="Total Time in bed Vs Total Time Asleep", x= "Total Time In Bed (min)", y="Total Time Asleep (min)")
+
+##TotalSteps vs. Calories
+ggplot(data=daily_activity) +
+  geom_point(mapping=aes(x=TotalSteps, y=Calories)) +
+  geom_smooth(mapping=aes(x=TotalSteps, y=Calories)) +
+  labs(title="The Relationship between Total Steps and Calories", x="Total Steps", y="Calories Burned (kcal)")
+
+##Type of active minutes vs Calories
+ggplot(data=daily_activity) +
+  geom_point(mapping=aes(x=VeryActiveMinutes, y=Calories)) +
+  geom_smooth(mapping=aes(x=VeryActiveMinutes, y=Calories)) +
+  labs(title="The Relationship between Very active minutes and Calories", x="Type of activity: Very active (min)", y="Calories Burned (kcal)")
+
+##BMI vs Type of actives minutes
+####creating a new data frame linking BMI and Type of active minutes
+BMI_activity <- data_frame(BMI = weight_log$BMI, fairly_active = fairly_active_67,sedentary = sedentary_67)
+###fairly active
+ggplot(data=BMI_activity)+
+  geom_point(mapping=aes(x=fairly_active, y=BMI))+
+  geom_smooth(mapping=aes(x=fairly_active, y=BMI))+
+labs(title="The Relationship between Fairly active minutes and BMI", x="Type of activity: Fairly active (min)", y="BMI")
+###sedentary
+ggplot(data=BMI_activity)+
+  geom_point(mapping=aes(x=sedentary, y=BMI))+
+  geom_smooth(mapping=aes(x=sedentary, y=BMI))+
+  labs(title="The Relationship between Sedentary minutes and BMI", x="Type of activity: Sedentary (min)", y="BMI")
+  
+
+
